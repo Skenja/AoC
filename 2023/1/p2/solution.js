@@ -12,10 +12,12 @@ const spelledOutNumbersMap = new Map([
   ['nine', 9]
 ]);
 
-const checkForSpelledOutNumber = (line, offset, direction) => {
-  const spelledOutNumbers = [...spelledOutNumbersMap.keys()];
+const spelledOutNumbers = [...spelledOutNumbersMap.keys()];
 
+const checkForSpelledOutNumber = (line, offset, direction) => {
   const spelledOutNumber = spelledOutNumbers.find((number) => {
+    const numberOffset = direction === 1 ? 0 : number.length - 1;
+
     for (let i = 0; i < number.length; i++) {
       // Going forwards:
       // abcone2threexyz     one
@@ -38,9 +40,9 @@ const checkForSpelledOutNumber = (line, offset, direction) => {
       // If any of the characters don't match, it is guaranteed not to be a match
       // If we didn't return false, it means that all characters matched, and so the number is a match
       const lineIndex = offset + i * direction;
-      const spelledOutNumberIndex = direction === 1 ? i : number.length - 1 - i;
+      const numberIndex = numberOffset + i * direction;
 
-      if (line[lineIndex] !== number[spelledOutNumberIndex])
+      if (line[lineIndex] !== number[numberIndex])
         return false;
     }
 
