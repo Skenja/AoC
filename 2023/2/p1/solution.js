@@ -29,7 +29,6 @@ const parseGames = async (fileName) => {
 
         return {
             id: gameId,
-            raw: gameRecord,
             sets: sets
         };
     });
