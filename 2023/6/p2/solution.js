@@ -20,18 +20,7 @@ const calculateWinOptions = (time, record) => {
         }
     }
 
-    let upperBoundary = time - lowerBoundary - 1;
-
-    for (let buttonReleaseTime = upperBoundary; buttonReleaseTime < time; buttonReleaseTime++) {
-        const isWinningStrategy = checkStrategyAgainstRecord(time, buttonReleaseTime, record);
-
-        if (!isWinningStrategy) {
-            upperBoundary = buttonReleaseTime;
-            break;
-        }
-    }
-
-    return upperBoundary - lowerBoundary;
+    return time - (lowerBoundary * 2) + 1;
 }
 
 const solve = async (fileName) => {
