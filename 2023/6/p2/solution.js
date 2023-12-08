@@ -9,16 +9,29 @@ const checkStrategyAgainstRecord = (totalTime, buttonReleaseTime, record) => {
 }
 
 const calculateWinOptions = (time, record) => {
-    let winningStrategies = 0;
+    let lowerBoundary = -1;
 
     for (let buttonReleaseTime = 1; buttonReleaseTime < time; buttonReleaseTime++) {
         const isWinningStrategy = checkStrategyAgainstRecord(time, buttonReleaseTime, record);
 
-        if (isWinningStrategy)
-            winningStrategies++;
+        if (isWinningStrategy) {
+            lowerBoundary = buttonReleaseTime;
+            break;
+        }
     }
 
-    return winningStrategies;
+    let upperBoundary = time - lowerBoundary - 1;
+
+    for (let buttonReleaseTime = upperBoundary; buttonReleaseTime < time; buttonReleaseTime++) {
+        const isWinningStrategy = checkStrategyAgainstRecord(time, buttonReleaseTime, record);
+
+        if (!isWinningStrategy) {
+            upperBoundary = buttonReleaseTime;
+            break;
+        }
+    }
+
+    return upperBoundary - lowerBoundary;
 }
 
 const solve = async (fileName) => {
