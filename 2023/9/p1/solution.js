@@ -1,4 +1,3 @@
-import { dir } from 'console';
 import * as fs from 'fs/promises';
 
 const calculateHistorySeqeuence = (history) => {
