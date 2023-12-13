@@ -93,7 +93,6 @@ const solve = async (fileName) => {
     let sum = 0;
 
     for (let i = 0; i < springRows.length; i++) {
-        console.log(i);
         const springRow = springRows[i];
         const row = unfoldSpringRow(springRow);
         const result = generateOptions(row.record, row.brokenGroups);
