@@ -34,22 +34,24 @@ const checkReflectionLines = (pattern, reflectionLines) => {
     const checkedReflectionLines = [];
 
     for (const reflectionLine of reflectionLines) {
-        for (let i = reflectionLine; i < pattern.length; i++) {
+        let isChecked = true;
+
+        for (let i = reflectionLine + 1; i < pattern.length; i++) {
             const distanceFromReflectionLine = i - reflectionLine;
             const leftEquivalent = reflectionLine - 1 - distanceFromReflectionLine;
 
             if (leftEquivalent < 0) {
-                checkedReflectionLines.push(reflectionLine);
                 break;
             }
 
             if (pattern[i] !== pattern[leftEquivalent]) {
+                isChecked = false;
                 break;
             }
+        }
 
-            if (i === pattern.length - 1) {
-                checkedReflectionLines.push(reflectionLine);
-            }
+        if (isChecked) {
+            checkedReflectionLines.push(reflectionLine);
         }
     }
 
