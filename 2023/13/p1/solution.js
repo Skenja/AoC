@@ -84,9 +84,8 @@ const flipPattern = (lines) => {
 const findVerticalReflectionLines = (pattern) => {
     const flippedPattern = flipPattern(pattern);
     const reflectionLines = findHorizontalReflectionLines(flippedPattern);
-    const checkedReflectionLines = checkReflectionLines(flippedPattern, reflectionLines);
 
-    return checkedReflectionLines;
+    return reflectionLines;
 }
 
 const solve = async (fileName) => {
