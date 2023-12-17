@@ -1,136 +1,117 @@
 import * as fs from 'fs/promises';
 
-const getVertexIdentifier = (x, y) => (x + 1) * 1000 + (y + 1);
+const deltaX = new Map([
+    ['up', 0],
+    ['down', 0],
+    ['left', -1],
+    ['right', 1],
+]);
 
-const getVertexCoordinates = (vertexIdentifier) => {
-    const x = Math.floor(vertexIdentifier / 1000) - 1;
-    const y = (vertexIdentifier % 1000) - 1;
+const deltaY = new Map([
+    ['up', -1],
+    ['down', 1],
+    ['left', 0],
+    ['right', 0],
+]);
 
-    return [x, y];
-};
+const getMover = (cityMap, minSteps, maxSteps, queue, visited) => {
+    return (x, y, direction, heat, directionMoves) => {
+        const dx = deltaX.get(direction);
+        const dy = deltaY.get(direction);
 
-const checkForStraightLine = (prev, last, current) => {
-    const prev1 = last;
+        for (let i = 1; i <= maxSteps; i++) {
+            const newX = x + dx * i;
+            const newY = y + dy * i;
+            const newDirectionMoves = directionMoves + 1;
 
-    if (prev1) {
-        const prev2 = prev[prev1[1]][prev1[0]];
+            const isXOutOfBounds = newX < 0 || newX >= cityMap[0].length;
+            const isYOutOfBounds = newY < 0 || newY >= cityMap.length;
 
-        if (prev2) {
-            const prev3 = prev[prev2[1]][prev2[0]];
-
-            if (prev3) {
-                const prev4 = prev[prev3[1]][prev3[0]];
-
-                if (prev4) {
-                    const [x, y] = current;
-                    const [x1, y1] = prev1;
-                    const [x2, y2] = prev2;
-                    const [x3, y3] = prev3;
-                    const [x4, y4] = prev4;
-
-                    const isVerticalLine = x === x1 && x1 === x2 && x2 === x3 && x3 === x4;
-                    const isHorizontalLine = y === y1 && y1 === y2 && y2 === y3 && y3 === y4;
-
-                    if (isVerticalLine || isHorizontalLine) {
-                        return true;
-                    }
-                }
+            if (isXOutOfBounds || isYOutOfBounds || newDirectionMoves > maxSteps) {
+                return;
             }
+
+            const newHeat = heat + cityMap[newY][newX];
+
+            if (i < minSteps) {
+                continue;
+            }
+
+            const visitedHeat = visited.get(newY, newX, direction, newDirectionMoves);
+
+            if (visitedHeat && visitedHeat <= newHeat) {
+                return;
+            }
+
+            // console.log(newX, newY, direction, newDirectionMoves, newHeat)
+
+            queue.push([newX, newY, direction, newDirectionMoves]);
+            visited.set(newX, newY, direction, newDirectionMoves, newHeat);
         }
     }
-
-    return false;
 }
 
-const dijkstra = (graph, source) => {
-    const distances = Array.from({ length: graph.length }, () => Array.from({ length: graph[0].length }, () => Number.POSITIVE_INFINITY));
-    const prev = Array.from({ length: graph.length }, () => Array.from({ length: graph[0].length }, () => null));
-    distances[source[1]][source[0]] = 0;
-    const processed = [];
-    const edges = new Set([getVertexIdentifier(...source)]);
+const getQueue = () => {
+    const queue = [];
 
-    while (processed.length === 0 || edges.size !== 0) {
-        // console.log(distances.map(row => row.join('\t')).join('\n'));
-        // pick neighbour with smallest distance
-        let picked = null;
-        let minDistance = Number.MAX_VALUE;
-        for (const edge of edges) {
-            const [x, y] = getVertexCoordinates(edge);
-            const distance = distances[y][x];
+    return {
+        push: (value) => queue.push(value),
+        pop: () => queue.pop(),
+        count: () => queue.length,
+    }
+}
 
-            if (distance < minDistance) {
-                picked = [x, y];
-                minDistance = distance;
-            }
+const getVisitedTracker = (cityMap) => {
+    const visited =
+        Array.from({ length: cityMap.length }, () =>
+            Array.from({ length: cityMap[0].length }, () =>
+                new Map()));
+
+    const createKey = (direction, directionMoves) => `${direction}-${directionMoves}`;
+
+    return {
+        getAll: (x, y) => [...visited[y][x].values()],
+        get: (x, y, direction, directionMoves) => visited[y][x].get(createKey(direction, directionMoves)),
+        set: (x, y, direction, directionMoves, heat) => visited[y][x].set(createKey(direction, directionMoves), heat),
+    };
+}
+
+const rotate = (direction, rotation) => {
+    const directions = ['up', 'right', 'down', 'left'];
+    const currentDirectionIndex = directions.indexOf(direction);
+    const rotationIndex = rotation === 'right' ? 1 : -1;
+    const newDirectionIndex = (currentDirectionIndex + rotationIndex + 4) % 4;
+
+    return directions[newDirectionIndex];
+}
+
+const traverse = (cityMap, minSteps, maxSteps) => {
+    const queue = getQueue();
+    const visited = getVisitedTracker(cityMap);
+    const move = getMover(cityMap, minSteps, maxSteps, queue, visited);
+
+    queue.push([0, 0, 'right', 0]);
+    queue.push([0, 0, 'down', 0]);
+
+    while (queue.count() > 0) {
+        const [x, y, direction, directionMoves] = queue.pop();
+        const heat = visited.get(x, y, direction, directionMoves) || 0;
+
+        if (directionMoves < maxSteps) {
+            move(x, y, direction, heat, directionMoves);
         }
 
-        const pickedIdentifier = getVertexIdentifier(...picked);
-
-        // add picked to processed
-        processed.push(pickedIdentifier);
-
-        // remove picked from edges
-        edges.delete(pickedIdentifier);
-
-        // get neighbours of picked
-        const potentialNeighbours = [
-            [picked[0] - 1, picked[1]],
-            [picked[0] + 1, picked[1]],
-            [picked[0], picked[1] - 1],
-            [picked[0], picked[1] + 1],
-        ];
-
-        const neighbours = potentialNeighbours
-            .filter(([x, y]) => x >= 0 && x < graph[0].length && y >= 0 && y < graph.length)
-            .filter(coordinates => !processed.includes(getVertexIdentifier(...coordinates)))
-            .filter(coordinates => !checkForStraightLine(prev, picked, coordinates));
-
-        // add neighbours to edges
-        for (const neighbour of neighbours) {
-            edges.add(getVertexIdentifier(...neighbour));
-        }
-        // console.log(picked, '\t', neighbours.map(x => '[' + x.join(',') + ']').join(','), '\t', [...edges.values()].join(', '),);
-
-        // update distances for neighbours if not fourth vertex in a straight line
-        for (const neighbour of neighbours) {
-            const [x, y] = neighbour;
-            const distance = distances[picked[1]][picked[0]] + graph[y][x];
-            if (distance < distances[y][x]) {
-                distances[y][x] = distance;
-                prev[y][x] = picked;
-            }
+        if (directionMoves >= minSteps) {
+            move(x, y, rotate(direction, 'left'), heat, 0);
+            move(x, y, rotate(direction, 'right'), heat, 0);
         }
     }
 
-    // const visualization = Array.from({ length: graph.length }, (_, y) => Array.from({ length: graph[0].length }, (_, x) => graph[y][x]));
-    // let current = [graph[0].length - 1, graph.length - 1];
+    const values = visited.getAll(cityMap[0].length - 1, cityMap.length - 1);
+    // return values;
+    const minHeat = Math.min(...values);
 
-    // while (current) {
-    //     const previous = prev[current[1]][current[0]];
-
-    //     if (!previous) {
-    //         break;
-    //     }
-
-    //     let char = '*';
-
-    //     if (current[0] === previous[0] && current[1] === previous[1] - 1) {
-    //         char = '^';
-    //     } else if (current[0] === previous[0] && current[1] === previous[1] + 1) {
-    //         char = 'v';
-    //     } else if (current[0] === previous[0] - 1 && current[1] === previous[1]) {
-    //         char = '<';
-    //     } else if (current[0] === previous[0] + 1 && current[1] === previous[1]) {
-    //         char = '>';
-    //     }
-
-    //     visualization[current[1]][current[0]] = char;
-    //     current = previous;
-    // }
-
-    // console.log(visualization.map(row => row.join('')).join('\n'));
-
-    return distances;
+    return minHeat;
 }
 
 const solve = async (fileName) => {
@@ -140,14 +121,9 @@ const solve = async (fileName) => {
             .split('')
             .map(Number));
 
-    const source = [0, 0];
-    const target = [cityMap[0].length - 1, cityMap.length - 1];
+    const minHeat = traverse(cityMap, 1, 3);
 
-    const distances = dijkstra(cityMap, source);
-    // console.log(cityMap.map(row => row.join('\t')).join('\n'));
-    // console.log();
-    // console.log(distances.map(row => row.join('\t')).join('\n'));
-    return distances[target[1]][target[0]];
+    return minHeat;
 }
 
 const solution = await solve('testCase');
