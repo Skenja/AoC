@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import FlatQueue from 'flatqueue';
 
 const deltaX = new Map([
     ['up', 0],
@@ -22,7 +23,7 @@ const getMover = (cityMap, minSteps, maxSteps, queue, visited) => {
         for (let i = 1; i <= maxSteps; i++) {
             const newX = x + dx * i;
             const newY = y + dy * i;
-            const newDirectionMoves = directionMoves + 1;
+            const newDirectionMoves = directionMoves + i;
 
             const isXOutOfBounds = newX < 0 || newX >= cityMap[0].length;
             const isYOutOfBounds = newY < 0 || newY >= cityMap.length;
@@ -31,32 +32,38 @@ const getMover = (cityMap, minSteps, maxSteps, queue, visited) => {
                 return;
             }
 
-            const newHeat = heat + cityMap[newY][newX];
+            heat += cityMap[newY][newX];
 
             if (i < minSteps) {
                 continue;
             }
 
-            const visitedHeat = visited.get(newY, newX, direction, newDirectionMoves);
+            const visitedHeat = visited.get(newX, newY, direction, newDirectionMoves);
 
-            if (visitedHeat && visitedHeat <= newHeat) {
+            if (visitedHeat && visitedHeat <= heat) {
                 return;
             }
 
-            // console.log(newX, newY, direction, newDirectionMoves, newHeat)
-
-            queue.push([newX, newY, direction, newDirectionMoves]);
-            visited.set(newX, newY, direction, newDirectionMoves, newHeat);
+            queue.push([newX, newY, direction, newDirectionMoves], heat);
+            visited.set(newX, newY, direction, newDirectionMoves, heat);
         }
     }
 }
 
 const getQueue = () => {
-    const queue = [];
+    const queue = new FlatQueue();
+    const values = [];
 
     return {
-        push: (value) => queue.push(value),
-        pop: () => queue.pop(),
+        push: (value, priority) => {
+            values.push(value)
+            queue.push(values.length - 1, priority);
+        },
+        pop: () => {
+            const number = queue.pop();
+            const value = values[number];
+            return value;
+        },
         count: () => queue.length,
     }
 }
@@ -67,7 +74,7 @@ const getVisitedTracker = (cityMap) => {
             Array.from({ length: cityMap[0].length }, () =>
                 new Map()));
 
-    const createKey = (direction, directionMoves) => `${direction}-${directionMoves}`;
+    const createKey = (direction, directionMoves) => `${direction[0]}${directionMoves}`;
 
     return {
         getAll: (x, y) => [...visited[y][x].values()],
@@ -90,8 +97,8 @@ const traverse = (cityMap, minSteps, maxSteps) => {
     const visited = getVisitedTracker(cityMap);
     const move = getMover(cityMap, minSteps, maxSteps, queue, visited);
 
-    queue.push([0, 0, 'right', 0]);
-    queue.push([0, 0, 'down', 0]);
+    queue.push([0, 0, 'right', 0], 0);
+    queue.push([0, 0, 'down', 0], 0);
 
     while (queue.count() > 0) {
         const [x, y, direction, directionMoves] = queue.pop();
@@ -108,7 +115,6 @@ const traverse = (cityMap, minSteps, maxSteps) => {
     }
 
     const values = visited.getAll(cityMap[0].length - 1, cityMap.length - 1);
-    // return values;
     const minHeat = Math.min(...values);
 
     return minHeat;
