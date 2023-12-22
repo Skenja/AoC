@@ -1,45 +1,25 @@
 import * as fs from 'fs/promises';
 
-const checkIfRockOrReachable = (coordinates, map, reachable) => {
-    const [y, x] = coordinates;
-
-    return map[y][x] === '#' || reachable[y][x];
-}
-
-const getNeighbors = (y, x, map, reachable) => {
-    const neighbors = [];
+const getNeighbors = (y, x, map) => {
+    const neighborOptions = [];
 
     if (y > 0) {
-        const neighbor = [y - 1, x];
-
-        if (!checkIfRockOrReachable(neighbor, map, reachable)) {
-            neighbors.push(neighbor);
-        }
+        neighborOptions.push([y - 1, x]);
     }
 
     if (y < map.length - 1) {
-        const neighbor = [y + 1, x];
-
-        if (!checkIfRockOrReachable(neighbor, map, reachable)) {
-            neighbors.push(neighbor);
-        }
+        neighborOptions.push([y + 1, x]);
     }
 
     if (x > 0) {
-        const neighbor = [y, x - 1];
-
-        if (!checkIfRockOrReachable(neighbor, map, reachable)) {
-            neighbors.push(neighbor);
-        }
+        neighborOptions.push([y, x - 1]);
     }
 
     if (x < map[0].length - 1) {
-        const neighbor = [y, x + 1];
-
-        if (!checkIfRockOrReachable(neighbor, map, reachable)) {
-            neighbors.push(neighbor);
-        }
+        neighborOptions.push([y, x + 1]);
     }
+
+    const neighbors = neighborOptions.filter(([y, x]) => map[y][x] !== '#');
 
     return neighbors;
 };
