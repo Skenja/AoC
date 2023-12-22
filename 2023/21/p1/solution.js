@@ -1,5 +1,15 @@
 import * as fs from 'fs/promises';
 
+const findS = (map) => {
+    for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[0].length; x++) {
+            if (map[y][x] === 'S') {
+                return [y, x];
+            }
+        }
+    }
+}
+
 const getNeighbors = (y, x, map) => {
     const neighborOptions = [];
 
@@ -25,61 +35,26 @@ const getNeighbors = (y, x, map) => {
 };
 
 const getNumberOfReachablePlots = (map, start, numberOfSteps) => {
-    const reachable = Array(map.length)
-        .fill()
-        .map(() => Array(map[0].length).fill(false));
-    const distances = Array
-        .from({ length: map.length },
-            () => Array.from({ length: map[0].length }, () => new Set()));
+    let positions = new Set();
+    positions.add(JSON.stringify(start));
 
-    distances[start[0]][start[1]].add(0);
+    for (let i = 0; i < numberOfSteps; i++) {
+        const newPositions = new Set();
 
-    const queue = [start];
+        for (const position of positions) {
+            const [y, x] = JSON.parse(position);
+            const neighbors = getNeighbors(y, x, map);
 
-    while (queue.length > 0) {
-        const [y, x] = queue.shift();
-        const currentDistance = Math.max(...distances[y][x]);
-        const newDistance = currentDistance + 1;
-
-        if (newDistance > numberOfSteps)
-            continue;
-
-        const neighbors = getNeighbors(y, x, map, reachable);
-
-        for (const neighbor of neighbors) {
-            const [yN, xN] = neighbor;
-
-            const existingDistances = distances[yN][xN];
-
-            existingDistances.add(newDistance);
-            queue.push(neighbor);
-
-            const isBiggerThan1 = newDistance > 1;
-            const isDenominator = numberOfSteps % newDistance === 0;
-            const isEven = newDistance % 2 === 0;
-
-            if (isBiggerThan1 && isDenominator && isEven) {
-                reachable[yN][xN] = true;
+            for (const neighbor of neighbors) {
+                newPositions.add(JSON.stringify(neighbor));
             }
         }
+
+        positions = newPositions;
     }
 
-    const numberOfReachablePlots = reachable
-        .map(row => row.filter(plot => plot).length)
-        .reduce((acc, curr) => acc + curr, 0);
-
-    return numberOfReachablePlots;
+    return positions.size;
 };
-
-const findS = (map) => {
-    for (let y = 0; y < map.length; y++) {
-        for (let x = 0; x < map[0].length; x++) {
-            if (map[y][x] === 'S') {
-                return [y, x];
-            }
-        }
-    }
-}
 
 const solve = async (fileName) => {
     const fileContent = await fs.readFile(fileName, { encoding: 'utf8' });
