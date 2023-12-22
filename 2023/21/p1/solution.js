@@ -1,108 +1,101 @@
 import * as fs from 'fs/promises';
 
-const createPriorityQueue = () => {
-    const queue = [];
+const checkIfRockOrReachable = (coordinates, map, reachable) => {
+    const [y, x] = coordinates;
 
-    const enqueue = (element, priority) => {
-        queue.push({ element, priority });
-        sort();
-    };
+    return map[y][x] === '#' || reachable[y][x];
+}
 
-    const dequeue = () => {
-        if (isEmpty()) {
-            return null;
-        }
-        return queue.shift();
-    };
-
-    const sort = () => {
-        queue.sort((a, b) => a.priority - b.priority);
-    };
-
-    const isEmpty = () => {
-        return queue.length === 0;
-    };
-
-    return {
-        enqueue,
-        dequeue,
-        isEmpty
-    };
-};
-
-// Helper function to get the neighbors of a vertex
-const getNeighbors = (vertex, rows, cols) => {
-    const [row, col] = vertex;
+const getNeighbors = (y, x, map, reachable) => {
     const neighbors = [];
 
-    if (row > 0) neighbors.push([row - 1, col]); // Up
-    if (row < rows - 1) neighbors.push([row + 1, col]); // Down
-    if (col > 0) neighbors.push([row, col - 1]); // Left
-    if (col < cols - 1) neighbors.push([row, col + 1]); // Right
+    if (y > 0) {
+        const neighbor = [y - 1, x];
+
+        if (!checkIfRockOrReachable(neighbor, map, reachable)) {
+            neighbors.push(neighbor);
+        }
+    }
+
+    if (y < map.length - 1) {
+        const neighbor = [y + 1, x];
+
+        if (!checkIfRockOrReachable(neighbor, map, reachable)) {
+            neighbors.push(neighbor);
+        }
+    }
+
+    if (x > 0) {
+        const neighbor = [y, x - 1];
+
+        if (!checkIfRockOrReachable(neighbor, map, reachable)) {
+            neighbors.push(neighbor);
+        }
+    }
+
+    if (x < map[0].length - 1) {
+        const neighbor = [y, x + 1];
+
+        if (!checkIfRockOrReachable(neighbor, map, reachable)) {
+            neighbors.push(neighbor);
+        }
+    }
 
     return neighbors;
 };
 
-const dijkstra = (matrix, start) => {
-    const rows = matrix.length;
-    const cols = matrix[0].length;
-
-    // Create a 2D array to store the distances
-    const distances = Array(rows)
+const getNumberOfReachablePlots = (map, start, numberOfSteps) => {
+    const reachable = Array(map.length)
         .fill()
-        .map(() => Array(cols).fill(Infinity));
+        .map(() => Array(map[0].length).fill(false));
+    const distances = Array
+        .from({ length: map.length },
+            () => Array.from({ length: map[0].length }, () => new Set()));
 
-    // Create a priority queue to store the vertices
-    const queue = createPriorityQueue();
+    distances[start[0]][start[1]].add(0);
 
-    // Set the distance of the start vertex to 0
-    distances[start[0]][start[1]] = 0;
+    const queue = [start];
 
-    // Enqueue the start vertex with distance 0
-    queue.enqueue(start, 0);
+    while (queue.length > 0) {
+        const [y, x] = queue.shift();
+        const currentDistance = Math.max(...distances[y][x]);
+        const newDistance = currentDistance + 1;
 
-    while (!queue.isEmpty()) {
-        const { vertex, distance } = queue.dequeue();
+        if (newDistance > numberOfSteps)
+            continue;
 
-        // Get the neighbors of the current vertex
-        const neighbors = getNeighbors(vertex, rows, cols);
+        const neighbors = getNeighbors(y, x, map, reachable);
 
         for (const neighbor of neighbors) {
-            const [row, col] = neighbor;
-            const newDistance = distance + 1;
+            const [yN, xN] = neighbor;
 
-            if (newDistance > 64)
-                continue;
+            const existingDistances = distances[yN][xN];
 
-            // Update the distance if it's shorter than the current distance
-            if (newDistance < distances[row][col]) {
-                distances[row][col] = newDistance;
-                queue.enqueue(neighbor, newDistance);
+            existingDistances.add(newDistance);
+            queue.push(neighbor);
+
+            const isBiggerThan1 = newDistance > 1;
+            const isDenominator = numberOfSteps % newDistance === 0;
+            const isEven = newDistance % 2 === 0;
+
+            if (isBiggerThan1 && isDenominator && isEven) {
+                reachable[yN][xN] = true;
             }
         }
     }
 
-    // If we couldn't reach the end vertex
-    return -1;
+    const numberOfReachablePlots = reachable
+        .map(row => row.filter(plot => plot).length)
+        .reduce((acc, curr) => acc + curr, 0);
+
+    return numberOfReachablePlots;
 };
 
-// // Example usage
-// const matrix = [
-//     [1, 2, 3],
-//     [4, 5, 6],
-//     [7, 8, 9],
-// ];
-// const start = [0, 0];
-// const end = [2, 2];
-
-// const shortestDistance = dijkstra(matrix, start, end);
-// console.log(shortestDistance);
-
-const findS = (matrix) => {
-    for (let y = 0; y < matrix.length; y++) {
-        for (let x = 0; x < matrix[0].length; x++) {
-            if (matrix[y][x] === 'S') {
-                return [x, y];
+const findS = (map) => {
+    for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[0].length; x++) {
+            if (map[y][x] === 'S') {
+                return [y, x];
             }
         }
     }
@@ -110,13 +103,13 @@ const findS = (matrix) => {
 
 const solve = async (fileName) => {
     const fileContent = await fs.readFile(fileName, { encoding: 'utf8' });
-    const matrix = fileContent
+    const map = fileContent
         .split('\r\n')
         .map((line) => line.split(''));
-    const startPosition = findS(matrix);
-    const numberOfGardenPlots = dijkstra(matrix, startPosition)
+    const startPosition = findS(map);
+    const distances = getNumberOfReachablePlots(map, startPosition, 64)
 
-    return startPosition;
+    return distances
 }
 
 const solution = await solve('testCase');
