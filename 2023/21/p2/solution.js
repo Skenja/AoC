@@ -49,16 +49,36 @@ const getNumberOfReachablePlots = (map, start, numberOfSteps) => {
     return positions.size;
 };
 
+const calculateCoeficients = (points) => points.map(step => {
+    while (step.some(v => v !== 0)) {
+        step = step.map((v, i) => v - step[i - 1]).slice(1);
+        points.push(step);
+    }
+
+    return points.map(v => v[0]);
+})
+
 const solve = async (fileName) => {
     const fileContent = await fs.readFile(fileName, { encoding: 'utf8' });
     const map = fileContent
         .split('\r\n')
         .map((line) => line.split(''));
     const startPosition = findS(map);
-    const distances = getNumberOfReachablePlots(map, startPosition, 500)
 
-    return distances
+    const steps = startPosition[0];
+    const mapSize = map.length;
+
+    const s1 = getNumberOfReachablePlots(map, startPosition, steps)
+    const s2 = getNumberOfReachablePlots(map, startPosition, steps + mapSize)
+    const s3 = getNumberOfReachablePlots(map, startPosition, steps + 2 * mapSize)
+
+    const points = [s1, s2, s3];
+    const [c, b, a] = calculateCoeficients([points])[0];
+    const x = 202300;
+    const solution = a * x * (x - 1) / 2 + b * x + c;
+
+    return solution;
 }
 
 const solution = await solve('testCase');
-console.log(solution); 
+console.log(solution);
