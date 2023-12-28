@@ -28,11 +28,16 @@ const getSpaceSizeFromBricks = (bricks) => {
     return spaceSize
 }
 
-const generate3DSpace = (spaceSize) => {
-    const space = Array.from({ length: spaceSize.z }, () =>
-        Array.from({ length: spaceSize.y }, () =>
-            Array(spaceSize.x).fill(null)
-        ));
+const generate2DSpace = ({ x, y }) => {
+    const space = Array.from({ length: y }, () =>
+        Array(x).fill(null)
+    );
+
+    return space;
+}
+
+const generate3DSpace = ({ x, y, z }) => {
+    const space = Array.from({ length: z }, () => generate2DSpace({ x, y }));
 
     return space;
 }
@@ -53,11 +58,34 @@ const fillSpaceWithBricks = (space, bricks) => {
 
 const settleBricks = (spaceSize, space, bricks) => {
     const settledSpace = generate3DSpace(spaceSize);
+    const emptyLayerMemory = generate2DSpace(spaceSize);
 
-    // start at bottom layer
-    // for every empty space in the layer find the first brick directly above it
-    // check if the entire brick is visible from current layer
-    // if so, reposition it to start in the current layer
+    for (const layerIndex in space) {
+        // first go through the bricks in the current layer and get the layer they belong in
+        // then move them
+        // then fill in emptyLayerMemory
+
+        const layer = space[layerIndex];
+        const brickLowestLayerMemory = new Map();
+
+        for (const y in layer) {
+            for (const x in layer[y]) {
+                if (layer[y][x] === null) {
+                    emptyLayerMemory[y][x] = Math.min(emptyLayerMemory[y][x] ?? Infinity, layerIndex);
+                    continue;
+                }
+
+                const brick = layer[y][x];
+
+                if (!brickLowestLayerMemory.has(brick)) {
+                    brickLowestLayerMemory.set(brick, emptyLayerMemory[y][x]);
+                }
+
+                const lowestLayer = brickLowestLayerMemory.get(brickIndex) || -1;
+                brickLowestLayerMemory.set(brick, Math.max(lowestLayer, layerIndex));
+            }
+        }
+    }
 
     return settledSpace;
 }
