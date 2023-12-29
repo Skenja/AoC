@@ -116,12 +116,10 @@ const settleBricks = (spaceSize, space) => {
 }
 
 /*
-    A -> B, C
-    B -> D, E
-    C -> D, E
-    D -> F
-    E -> F
-    F -> G
+    top to bottom
+    map supporting bricks for each brick in the layer
+    if any brick relies on just one brick, the brick it relies on is not disintegrateable
+    if vertical brick is supported by itself in a lower layer, ignore it
 
     G -> F
     F -> D, E
