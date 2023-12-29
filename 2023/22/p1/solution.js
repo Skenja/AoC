@@ -56,38 +56,89 @@ const fillSpaceWithBricks = (space, bricks) => {
     return space;
 }
 
-const settleBricks = (spaceSize, space, bricks) => {
+const settleBricks = (spaceSize, space) => {
     const settledSpace = generate3DSpace(spaceSize);
     const emptyLayerMemory = generate2DSpace(spaceSize);
+    let highestLayerAfterSettling = -1;
 
     for (const layerIndex in space) {
-        // first go through the bricks in the current layer and get the layer they belong in
-        // then move them
-        // then fill in emptyLayerMemory
-
         const layer = space[layerIndex];
-        const brickLowestLayerMemory = new Map();
+        const movableBrickLowestLayerMemory = new Map();
 
         for (const y in layer) {
             for (const x in layer[y]) {
                 if (layer[y][x] === null) {
-                    emptyLayerMemory[y][x] = Math.min(emptyLayerMemory[y][x] ?? Infinity, layerIndex);
                     continue;
                 }
 
                 const brick = layer[y][x];
+                const lowestLayerOnThisPosition = emptyLayerMemory[y][x] || layerIndex;
+                const previousLowestLayer = movableBrickLowestLayerMemory.get(brick) || -1;
+                const newLowestLayer = Math.max(lowestLayerOnThisPosition, previousLowestLayer);
 
-                if (!brickLowestLayerMemory.has(brick)) {
-                    brickLowestLayerMemory.set(brick, emptyLayerMemory[y][x]);
+                if (newLowestLayer === layerIndex) {
+                    movableBrickLowestLayerMemory.delete(brick);
+                } else {
+                    movableBrickLowestLayerMemory.set(brick, newLowestLayer);
+                }
+            }
+        }
+
+        for (const y in layer) {
+            for (const x in layer[y]) {
+                if (layer[y][x] === null) {
+                    if (!emptyLayerMemory[y][x]) {
+                        emptyLayerMemory[y][x] = layerIndex;
+                    }
+
+                    continue;
                 }
 
-                const lowestLayer = brickLowestLayerMemory.get(brickIndex) || -1;
-                brickLowestLayerMemory.set(brick, Math.max(lowestLayer, layerIndex));
+                const brick = layer[y][x];
+                const lowestLayer = movableBrickLowestLayerMemory.get(brick);
+
+                if (!lowestLayer) {
+                    settledSpace[layerIndex][y][x] = brick;
+                    emptyLayerMemory[y][x] = null;
+                    highestLayerAfterSettling = Math.max(highestLayerAfterSettling, layerIndex);
+
+                    continue;
+                }
+
+                settledSpace[lowestLayer][y][x] = brick;
+                emptyLayerMemory[y][x] = lowestLayer + 1;
+                highestLayerAfterSettling = Math.max(highestLayerAfterSettling, lowestLayer);
             }
         }
     }
 
-    return settledSpace;
+    return settledSpace.slice(0, highestLayerAfterSettling + 1);
+}
+
+/*
+    A -> B, C
+    B -> D, E
+    C -> D, E
+    D -> F
+    E -> F
+    F -> G
+
+    G -> F
+    F -> D, E
+    E -> B, C
+    D -> B, C
+    C -> A
+    B -> A
+*/
+
+const countDisintegrateableBricks = (space, bricks) => {
+    const disintegrateableBricks = bricks.map(brick => brick.i);
+
+    for (let z = space.length - 1; z > 0; z--) {
+
+    }
+
+    return disintegrateableBricks.length;
 }
 
 const solve = async (fileName) => {
@@ -96,9 +147,10 @@ const solve = async (fileName) => {
     const spaceSize = getSpaceSizeFromBricks(bricks);
     const space = generate3DSpace(spaceSize);
     const filledSpace = fillSpaceWithBricks(space, bricks);
-    const settledSpace = settleBricks(spaceSize, filledSpace, bricks);
+    const settledSpace = settleBricks(spaceSize, filledSpace);
+    const count = countDisintegrateableBricks(settledSpace);
 
-    return settledSpace
+    return count
 }
 
 const solution = await solve('testCase');
