@@ -67,43 +67,45 @@ const settleBricks = (spaceSize, space) => {
 
         for (const y in layer) {
             for (const x in layer[y]) {
-                if (layer[y][x] === null) {
+                const brick = layer[y][x];
+
+                if (brick === null) {
                     continue;
                 }
 
-                const brick = layer[y][x];
                 const lowestLayerOnThisPosition = emptyLayerMemory[y][x] || layerIndex;
-                const previousLowestLayer = movableBrickLowestLayerMemory.get(brick) || -1;
-                const newLowestLayer = Math.max(lowestLayerOnThisPosition, previousLowestLayer);
+                const previousLowestLayerForBrick = movableBrickLowestLayerMemory.get(brick) || -1;
+                const newLowestLayerForBrick = Math.max(lowestLayerOnThisPosition, previousLowestLayerForBrick);
 
-                if (newLowestLayer === layerIndex) {
+                if (newLowestLayerForBrick === layerIndex) {
                     movableBrickLowestLayerMemory.delete(brick);
                 } else {
-                    movableBrickLowestLayerMemory.set(brick, newLowestLayer);
+                    movableBrickLowestLayerMemory.set(brick, newLowestLayerForBrick);
                 }
             }
         }
 
         for (const y in layer) {
             for (const x in layer[y]) {
-                if (layer[y][x] === null) {
-                    if (!emptyLayerMemory[y][x]) {
+                const brick = layer[y][x];
+
+                if (brick === null) {
+                    if (emptyLayerMemory[y][x] === null) {
                         emptyLayerMemory[y][x] = layerIndex;
                     }
 
                     continue;
                 }
 
-                const brick = layer[y][x];
-                const lowestLayer = movableBrickLowestLayerMemory.get(brick);
-
-                if (!lowestLayer) {
+                if (!movableBrickLowestLayerMemory.has(brick)) {
                     settledSpace[layerIndex][y][x] = brick;
                     emptyLayerMemory[y][x] = null;
                     highestLayerAfterSettling = Math.max(highestLayerAfterSettling, layerIndex);
 
                     continue;
                 }
+
+                const lowestLayer = movableBrickLowestLayerMemory.get(brick);
 
                 settledSpace[lowestLayer][y][x] = brick;
                 emptyLayerMemory[y][x] = lowestLayer + 1;
@@ -130,10 +132,36 @@ const settleBricks = (spaceSize, space) => {
 */
 
 const countDisintegrateableBricks = (space, bricks) => {
-    const disintegrateableBricks = bricks.map(brick => brick.i);
+    let disintegrateableBricks = bricks.map(brick => brick.i);
+    const brickSupports = new Map();
 
     for (let z = space.length - 1; z > 0; z--) {
+        for (let y = 0; y < space[z].length; y++) {
+            for (let x = 0; x < space[z][y].length; x++) {
+                const brick = space[z][y][x];
+                const brickBelow = space[z - 1][y][x];
 
+                if (brick === null || brickBelow === null || brick === brickBelow) {
+                    continue;
+                }
+
+                if (!brickSupports.has(brick)) {
+                    brickSupports.set(brick, new Set());
+                }
+
+                const currentBrickSupport = brickSupports.get(brick);
+                currentBrickSupport.add(brickBelow);
+            }
+        }
+    }
+
+    for (const supports of brickSupports.values()) {
+        if (supports.size !== 1) {
+            continue;
+        }
+
+        const supportedBrick = [...supports][0];
+        disintegrateableBricks = disintegrateableBricks.filter(x => x !== supportedBrick);
     }
 
     return disintegrateableBricks.length;
@@ -146,7 +174,7 @@ const solve = async (fileName) => {
     const space = generate3DSpace(spaceSize);
     const filledSpace = fillSpaceWithBricks(space, bricks);
     const settledSpace = settleBricks(spaceSize, filledSpace);
-    const count = countDisintegrateableBricks(settledSpace);
+    const count = countDisintegrateableBricks(settledSpace, bricks);
 
     return count
 }
